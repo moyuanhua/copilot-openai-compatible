@@ -115,6 +115,6 @@ export class ChatService {
       });
     }
 
-    await session.disconnect?.();
+    if (session.disconnect) await session.disconnect();
   }
 }
