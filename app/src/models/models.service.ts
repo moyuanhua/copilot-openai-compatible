@@ -10,8 +10,9 @@ export class ModelsService {
 
     try {
       const client = this.copilotService.getClient();
-      if (typeof (client as any).listModels === 'function') {
-        modelIds = await (client as any).listModels();
+      if ('listModels' in client && typeof client.listModels === 'function') {
+        const models = await client.listModels();
+        modelIds = models.map((m) => m.id);
       }
     } catch {
       // Fall back to static list

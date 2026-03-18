@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { approveAll } from '@github/copilot-sdk';
+import type { SessionConfig } from '@github/copilot-sdk';
 import { CopilotService } from '../copilot/copilot.service';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
 
@@ -34,12 +36,12 @@ export class ChatService {
       .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join('\n\n');
 
-    const sessionConfig: Record<string, unknown> = {};
+    const sessionConfig: SessionConfig = { onPermissionRequest: approveAll };
     if (systemMessage) {
-      sessionConfig.systemMessage = systemMessage;
+      sessionConfig.systemMessage = { content: systemMessage };
     }
 
-    const session = await client.createSession(sessionConfig as any);
+    const session = await client.createSession(sessionConfig);
 
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream');
