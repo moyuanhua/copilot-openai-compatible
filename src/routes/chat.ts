@@ -64,7 +64,7 @@ router.post('/', async (req: Request, res: Response) => {
     return;
   }
 
-  const model = body.model || 'gpt-4.1';
+  const model = body.model || 'gpt-5-mini';
   const isStream = body.stream === true;
   const completionId = `chatcmpl-${uuidv4()}`;
   const created = Math.floor(Date.now() / 1000);

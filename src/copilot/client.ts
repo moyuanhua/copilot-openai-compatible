@@ -60,11 +60,7 @@ export async function stopCopilotClient(): Promise<void> {
  * Falls back to a static list when the SDK method is unavailable or fails.
  */
 export const STATIC_MODELS = [
-  'gpt-4.1',
-  'gpt-4o',
-  'gpt-4o-mini',
+  'gpt-5-mini',
   'claude-sonnet-4.5',
-  'claude-3.5-sonnet',
-  'o3-mini',
-  'o1',
+  'claude-haiku-4.5',
 ];
