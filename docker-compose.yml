@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  proxy:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      # REQUIRED: set your proxy API key for clients
+      PROXY_API_KEY: ${PROXY_API_KEY:-change-me}
+      # OPTIONAL: GitHub token for server-side Copilot auth
+      # GITHUB_TOKEN: ${GITHUB_TOKEN}
+      # OPTIONAL: enable passthrough mode
+      # ENABLE_PASSTHROUGH: "true"
+      LOG_LEVEL: "info"
+      RATE_LIMIT_MAX: "60"
+      RATE_LIMIT_WINDOW_MS: "60000"
+      DEFAULT_MODEL: "gpt-4.1"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode===200?0:1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
