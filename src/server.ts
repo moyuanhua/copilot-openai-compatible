@@ -5,8 +5,8 @@
  * server.  See README.md for setup instructions.
  */
 
-import { createApp } from './app';
-import { stopCopilotClient } from './copilot/client';
+import { createApp } from './app.js';
+import { stopCopilotClient } from './copilot/client.js';
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 const PROXY_API_KEY = process.env.PROXY_API_KEY;

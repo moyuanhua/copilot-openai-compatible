@@ -31,8 +31,6 @@ export async function getCopilotClient(): Promise<CopilotClient> {
       : 'warning';
 
     const opts: CopilotClientOptions = {
-      // useLoggedInUser is true by default; no githubToken is supplied so the
-      // SDK picks up the credentials stored by `copilot auth login`.
       logLevel,
     };
     const client = new CopilotClient(opts);

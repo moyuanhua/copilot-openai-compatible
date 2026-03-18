@@ -7,8 +7,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { getCopilotClient, STATIC_MODELS } from '../copilot/client';
-import { ModelObject, ModelsListResponse } from '../types';
+import { getCopilotClient, STATIC_MODELS } from '../copilot/client.js';
+import { ModelObject, ModelsListResponse } from '../types.js';
 
 const router = Router();
 

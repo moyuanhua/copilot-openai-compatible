@@ -6,12 +6,12 @@
  */
 
 import express from 'express';
-import { loggerMiddleware } from './middleware/logger';
-import { authMiddleware } from './middleware/auth';
-import { rateLimitMiddleware } from './middleware/rateLimit';
-import chatRouter from './routes/chat';
-import modelsRouter from './routes/models';
-import embeddingsRouter from './routes/embeddings';
+import { loggerMiddleware } from './middleware/logger.js';
+import { authMiddleware } from './middleware/auth.js';
+import { rateLimitMiddleware } from './middleware/rateLimit.js';
+import chatRouter from './routes/chat.js';
+import modelsRouter from './routes/models.js';
+import embeddingsRouter from './routes/embeddings.js';
 
 export function createApp(): express.Application {
   const app = express();

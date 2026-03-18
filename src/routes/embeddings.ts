@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { EmbeddingErrorResponse } from '../types';
+import { EmbeddingErrorResponse } from '../types.js';
 
 const router = Router();
 
