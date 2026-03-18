@@ -1,0 +1,22 @@
+services:
+  proxy:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # API key required by external clients
+      PROXY_API_KEY: ${PROXY_API_KEY:-changeme}
+      # Port (optional, defaults to 3000)
+      PORT: "3000"
+      # Rate limiting (optional)
+      RATE_LIMIT_WINDOW_MS: "60000"
+      RATE_LIMIT_MAX: "60"
+      # Copilot log level (none|error|warning|info|debug|all)
+      COPILOT_LOG_LEVEL: "warning"
+    volumes:
+      # Mount the host's Copilot CLI config so the container can authenticate.
+      # The Copilot CLI stores credentials in ~/.config/gh/  and
+      # ~/.config/copilot/ (paths may vary by OS / CLI version).
+      - "${HOME}/.config/gh:/home/appuser/.config/gh:ro"
+      - "${HOME}/.config/copilot:/home/appuser/.config/copilot:ro"
+    restart: unless-stopped
