@@ -1,0 +1,22 @@
+services:
+  copilot-api:
+    build: .
+    container_name: copilot-openai-compatible
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      PORT: 8888
+      SESSION_TTL_MS: 600000
+    volumes:
+      # Mount host Copilot credentials so the container can authenticate.
+      # The path below is the default location on Linux/macOS.
+      - ~/.config/github-copilot:/root/.config/github-copilot:ro
+      # On macOS the credentials may also live here:
+      # - ~/Library/Application Support/github-copilot:/root/.config/github-copilot:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8888/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
