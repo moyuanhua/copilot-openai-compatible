@@ -5,6 +5,7 @@ import type { ChatCompletionRequest } from "../types.js";
 import { DEFAULT_MODEL, resolveModel } from "../types.js";
 import { convertMessages, buildSystemContent } from "../utils/messages.js";
 import { convertTools } from "../utils/tools.js";
+import { resolveSessionId } from "../utils/session.js";
 import {
   makeCompletionResponse,
   makeStreamChunk,
@@ -62,11 +63,21 @@ export function createChatRouter(sessionManager: SessionManager): Router {
       console.log(`[chat] Model alias resolved: "${requestedModel}" → "${model}"`);
     }
     const requestedStream = body.stream === true;
-    const headerSessionId = req.headers["x-session-id"] as string | undefined;
-    const isEphemeral = !headerSessionId;
 
     // Convert OpenAI messages → Copilot session inputs
     const { systemContent, historyBlock, lastUserPrompt } = convertMessages(body.messages);
+
+    if (!lastUserPrompt.trim()) {
+      res.status(400).json({ error: { message: "No user message found in messages array", type: "invalid_request_error" } });
+      return;
+    }
+
+    // Resolve session ID from X-Session-Id header (undefined = ephemeral)
+    const sessionId = resolveSessionId(req);
+    const isEphemeral = !sessionId;
+    if (sessionId) {
+      console.log(`[chat] Using session: "${sessionId}"`);
+    }
 
     if (!lastUserPrompt.trim()) {
       res.status(400).json({ error: { message: "No user message found in messages array", type: "invalid_request_error" } });
@@ -84,12 +95,11 @@ export function createChatRouter(sessionManager: SessionManager): Router {
     let sessionEntry: { session: Awaited<ReturnType<typeof sessionManager["getOrCreate"]>>["session"]; isNew: boolean };
     try {
       sessionEntry = await sessionManager.getOrCreate(
-        isEphemeral ? undefined : headerSessionId,
+        sessionId,
         {
           model,
           systemContent: fullSystemContent,
           tools: sdkTools,
-          streaming: true, // always enable streaming at the SDK layer
         },
       );
     } catch (err: unknown) {
@@ -108,10 +118,10 @@ export function createChatRouter(sessionManager: SessionManager): Router {
 
     // ── Streaming response ────────────────────────────────────────────────────
     if (requestedStream) {
-      await handleStreamingResponse(res, session, model, promptToSend, sessionManager, isEphemeral, headerSessionId);
+      await handleStreamingResponse(res, session, model, promptToSend, sessionManager, isEphemeral, sessionId);
     } else {
       // ── Non-streaming response ──────────────────────────────────────────────
-      await handleNonStreamingResponse(res, session, model, promptToSend, sessionManager, isEphemeral, headerSessionId);
+      await handleNonStreamingResponse(res, session, model, promptToSend, sessionManager, isEphemeral, sessionId);
     }
   });
 

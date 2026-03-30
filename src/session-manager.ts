@@ -3,7 +3,7 @@ import { approveAll } from "./client.js";
 
 interface SessionEntry {
   session: CopilotSession;
-  lastUsed: Date;
+  lastUsed: number;
   model: string;
 }
 
@@ -11,10 +11,8 @@ interface SessionEntry {
  * Manages long-lived Copilot sessions keyed by an arbitrary session ID string.
  * Idle sessions are automatically disconnected after `ttlMs` milliseconds.
  *
- * Lifecycle:
- *  - `getOrCreate(id, ...)` — returns an existing session or creates a new one.
- *  - `remove(id)`           — disconnects and removes a session immediately.
- *  - `destroy()`            — stops the cleanup timer (call on server shutdown).
+ * Session ID comes from the `X-Session-Id` request header.
+ * Requests without that header get an ephemeral session (not stored here).
  */
 export class SessionManager {
   private sessions = new Map<string, SessionEntry>();
@@ -22,19 +20,16 @@ export class SessionManager {
 
   constructor(
     private readonly client: CopilotClient,
-    ttlMs = 10 * 60 * 1000, // 10 minutes default
+    private readonly ttlMs = 10 * 60 * 1000,
   ) {
-    this.timer = setInterval(() => this.evictIdle(ttlMs), 60_000);
-    // Do not block process exit for the timer.
+    this.timer = setInterval(() => this.evictIdle(), 60_000);
     if (typeof this.timer.unref === "function") this.timer.unref();
   }
 
   /**
    * Returns existing session for `sessionId` (if provided and found),
    * or creates a fresh one.
-   *
-   * When `sessionId` is undefined an ephemeral session is NOT stored —
-   * the caller is responsible for calling `session.disconnect()`.
+   * When `sessionId` is undefined an ephemeral session is returned — not stored.
    */
   async getOrCreate(
     sessionId: string | undefined,
@@ -42,79 +37,64 @@ export class SessionManager {
       model: string;
       systemContent?: string;
       tools?: SessionConfig["tools"];
-      streaming?: boolean;
     },
   ): Promise<{ session: CopilotSession; isNew: boolean }> {
     if (sessionId) {
       const entry = this.sessions.get(sessionId);
       if (entry) {
-        entry.lastUsed = new Date();
+        entry.lastUsed = Date.now();
         return { session: entry.session, isNew: false };
       }
     }
 
-    const sessionConfig: SessionConfig = {
+    const cfg: SessionConfig = {
       model: opts.model,
       onPermissionRequest: approveAll,
-      streaming: opts.streaming ?? true,
+      streaming: true,
     };
 
     if (opts.systemContent) {
-      sessionConfig.systemMessage = {
-        mode: "customize",
-        sections: {
-          // Replace default identity/persona but keep safety + tool instructions
-        },
-        content: opts.systemContent,
-      };
+      (cfg as any).systemMessage = { mode: "customize", content: opts.systemContent, sections: {} };
     }
 
-    if (opts.tools && opts.tools.length > 0) {
-      sessionConfig.tools = opts.tools;
-    }
+    if (opts.tools && opts.tools.length > 0) cfg.tools = opts.tools;
 
-    const session = await this.client.createSession(sessionConfig);
-    console.log(`[session] Created ${session.sessionId} (model: ${opts.model})`);
+    const session = await this.client.createSession(cfg);
 
     if (sessionId) {
-      this.sessions.set(sessionId, { session, lastUsed: new Date(), model: opts.model });
+      this.sessions.set(sessionId, { session, lastUsed: Date.now(), model: opts.model });
+      console.log(`[session] Created session "${sessionId}" (model: ${opts.model})`);
     }
 
     return { session, isNew: true };
   }
 
-  /**
-   * Disconnect and remove a session by ID.
-   */
+  /** Disconnect and remove a session by ID. */
   async remove(sessionId: string): Promise<void> {
     const entry = this.sessions.get(sessionId);
     if (!entry) return;
     this.sessions.delete(sessionId);
     try {
       await entry.session.disconnect();
-      console.log(`[session] Removed ${sessionId}`);
+      console.log(`[session] Removed "${sessionId}"`);
     } catch (err) {
-      console.warn(`[session] Error disconnecting ${sessionId}:`, err);
+      console.warn(`[session] Error disconnecting "${sessionId}":`, err);
     }
   }
 
-  /**
-   * Stop the TTL cleanup interval.
-   */
+  /** Stop the TTL cleanup interval. */
   destroy(): void {
     clearInterval(this.timer);
   }
 
-  // ── private ──────────────────────────────────────────────────────────────────
-
-  private evictIdle(ttlMs: number): void {
+  private evictIdle(): void {
     const now = Date.now();
     for (const [id, entry] of this.sessions) {
-      if (now - entry.lastUsed.getTime() > ttlMs) {
-        console.log(`[session] Evicting idle session ${id}`);
+      if (now - entry.lastUsed > this.ttlMs) {
+        console.log(`[session] Evicting idle session "${id}"`);
         this.sessions.delete(id);
         entry.session.disconnect().catch((err: unknown) => {
-          console.warn(`[session] Error evicting ${id}:`, err);
+          console.warn(`[session] Error evicting "${id}":`, err);
         });
       }
     }

@@ -187,11 +187,90 @@ The default model is `gpt-4.1`. Pass any `id` below in the `model` field of your
 
 ---
 
+## Docker Deployment
+
+Docker is an alternative to PM2, useful when you want full isolation or are deploying to a container platform.
+
+### Prerequisites
+
+Make sure you are logged in to GitHub Copilot on the **host machine** first:
+
+```bash
+gh auth login          # or: copilot-cli login
+```
+
+The container does not have a browser/TTY, so it reads the credentials that were written to disk on the host.
+
+### Build the image
+
+```bash
+docker build -t copilot-openai-compatible .
+```
+
+### Run with Docker Compose (recommended)
+
+```bash
+docker compose up -d
+```
+
+The `docker-compose.yml` mounts the host Copilot credential directory into the container so it can authenticate without an extra login step.
+
+Check the logs:
+
+```bash
+docker compose logs -f copilot-api
+```
+
+Health check:
+
+```bash
+curl http://localhost:8888/health
+# {"status":"ok","timestamp":"..."}
+```
+
+### Credential path notes
+
+`docker-compose.yml` mounts `~/.config/github-copilot` by default (Linux / macOS default location). If your credentials are in a different place, edit the `volumes` section:
+
+```yaml
+volumes:
+  # Linux / macOS default
+  - ~/.config/github-copilot:/root/.config/github-copilot:ro
+
+  # macOS alternative (Application Support)
+  # - ~/Library/Application Support/github-copilot:/root/.config/github-copilot:ro
+
+  # Windows (WSL2) — adjust the Windows path
+  # - /mnt/c/Users/<YourName>/.config/github-copilot:/root/.config/github-copilot:ro
+```
+
+### Environment variables (Docker)
+
+Pass them via the `environment` section in `docker-compose.yml` or with `-e` flags on `docker run`:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8888` | HTTP listen port inside the container |
+| `SESSION_TTL_MS` | `600000` | Idle session eviction time (ms) |
+
+### Run without Compose
+
+```bash
+docker run -d \
+  --name copilot-api \
+  -p 8888:8888 \
+  -e PORT=8888 \
+  -v ~/.config/github-copilot:/root/.config/github-copilot:ro \
+  copilot-openai-compatible
+```
+
+---
+
 ## Build
 
 ```bash
-npm run build   # emits to dist/
-npm start       # runs dist/server.js on PORT (default 3000)
+npm run build   # compiles TypeScript → dist/
+npm start       # runs dist/server.js (PORT default 3000)
 ```
 
 ---
